@@ -49,6 +49,9 @@ le.fit(train_data['source'])
 train_data['label'] = le.transform(train_data['source'])
 train_data = train_data.drop('source', axis = 1)
 
+onlyfiles = [f for f in listdir('./train_altered')]
+# onlyfiles = [f.split('.')[0] for f in onlyfiles]
+print(len(onlyfiles))
 
 img_folder_path = './train_altered/'
 my_dataset = CustomDataSet(img_folder_path, transform=transform)

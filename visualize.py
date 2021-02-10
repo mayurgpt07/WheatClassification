@@ -15,31 +15,6 @@ from shutil import copyfile
 import time
 import os
 
-class CustomDataSet(Dataset):
-    def __init__(self, main_dir, transform = None):
-        self.main_dir = main_dir
-        self.transform = transform
-        all_imgs = os.listdir(main_dir)
-        self.total_imgs = natsorted(all_imgs)
-
-    def __len__(self):
-        return(self.total_imgs)
-
-    def __getitem__(self, idx):
-        img_loc = os.path.join(self.main_dir, self.total_imgs[idx])
-        image = Image.open(img_loc)
-        tensor_image = self.transform(image)
-        return tensor_image
-
-
-transform = transforms.Compose([
-    transforms.Resize((256, 256)),
-    transforms.ToTensor(),
-    #transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))#
-    ])
-
-# for idx, img in enumerate(train_loader):
-
 train_data = pd.read_csv('train.csv', sep = ',', header = 0)
 
 
@@ -76,7 +51,7 @@ def create_image(train_data, image_id):
             x, y, w, h = float(dimensions[0]),float(dimensions[1]),float(dimensions[2]),float(dimensions[3])
             rect = mpl.patches.Rectangle((x,y), w, h, linewidth = 1, edgecolor='r', facecolor = 'none')
             ax.add_patch(rect)
-        plt.savefig('./train_altered/'+image_id+'.jpg', bbox_inches='tight', dpi = 1024)
+        plt.savefig('./train_altered/'+image_id+'.jpg', bbox_inches='tight')
         del(f)
         del(ax)
         del(dimensions)
@@ -86,10 +61,13 @@ def create_image(train_data, image_id):
             time.sleep(1)
 
 
-for image_id in unique_images[3200:3422]:
-    create_image(train_data, image_id)
+# for image_id in unique_images:
+#     create_image(train_data, image_id)
 
-# img_folder_path = './train_altered/'
-# my_dataset = CustomDataSet(img_folder_path, transform=transform)
-# print(len(list(my_dataset)))
-# train_loader = data.DataLoader(my_dataset , batch_size=16, shuffle=False, num_workers=4, drop_last=True)
+onlyfiles_altered = [f for f in listdir('./train_altered')]
+onlyfiles_altered = [f.split('.')[0] for f in onlyfiles_altered]
+
+for i in onlyfiles:
+    if i not in onlyfiles_altered:
+        copyfile('./train/'+i+'.jpg', './train_altered/'+i+'.jpg')
+
