@@ -32,7 +32,7 @@ class CustomDataSet(Dataset):
         img_loc = os.path.join(self.main_dir, self.total_imgs[idx])
         image_id = str(self.total_imgs[idx]).split('.')[0]
         if len(self.dataframe.loc[self.dataframe['image_id'] == image_id, 'label']) == 0:
-            label = -1
+            label = 7
         else:
             label = self.dataframe.loc[self.dataframe['image_id'] == image_id, 'label']
             label = list(label)[0]
@@ -47,9 +47,9 @@ class Unit(torch.nn.Module):
         super(Unit,self).__init__()
         
 
-        self.conv = torch.nn.Conv2d(in_channels=in_channels,kernel_size=3,out_channels=out_channels,stride=1,padding=1)
+        self.conv = torch.nn.Conv2d(in_channels=in_channels,kernel_size=5,out_channels=out_channels,padding=2)
         self.bn = torch.nn.BatchNorm2d(num_features=out_channels)
-        self.relu = torch.nn.ReLU()
+        self.relu = torch.nn.ReLU(inplace = True)
 
     def forward(self,input):
         output = self.conv(input)
@@ -59,7 +59,7 @@ class Unit(torch.nn.Module):
         return output
 
 class SimpleNet(torch.nn.Module):
-    def __init__(self,num_classes=10):
+    def __init__(self,num_classes):
         super(SimpleNet,self).__init__()
         
         #Create 14 layers of the unit with max pooling in between
@@ -92,29 +92,34 @@ class SimpleNet(torch.nn.Module):
         #Add all the units into the Sequential layer in exact order
         self.net = torch.nn.Sequential(self.unit1, self.unit2, self.unit3, self.pool1, self.unit4, self.unit5, self.unit6,self.unit7, self.pool2, self.unit8, self.unit9, self.unit10, self.unit11, self.pool3,self.unit12, self.unit13, self.unit14, self.avgpool)
 
-        self.fc = torch.nn.Linear(in_features=128,out_features=num_classes)
+        self.fc = torch.nn.Linear(in_features=128*8*8,out_features=num_classes)
 
     def forward(self, input):
         output = self.net(input)
-        output = output.view(-1,128)
+        # print(output.shape)
+        output = output.view(-1,128*8*8)
         output = self.fc(output)
         return output
 
 def train_model(epochs, train_loader, model):
+    # print(model)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.0001)
     loss_fn = torch.nn.CrossEntropyLoss()
-    for _ in range(epochs):
+    for epoch in range(epochs):
         model.train()
-
+        train_loss = 0
+        train_acc = 0
         for i, (image, label) in enumerate(train_loader):
+            # print(label)
             
             optimizer.zero_grad()
             outputs = model(image)
             loss = loss_fn(outputs, label)
             loss.backward()
             optimizer.step()
-            train_loss += loss.cpu().data[0] * images.size(0)
+            train_loss += loss.item() * image.size(0)
             _, prediction = torch.max(outputs.data, 1)
+            train_acc += torch.sum(prediction == label.data)
         print("Epoch {}, Train Accuracy: {} , TrainLoss: {}".format(epoch, train_acc, train_loss))
 
 def aggregate_labels(df):
@@ -135,7 +140,8 @@ le = preprocessing.LabelEncoder()
 le.fit(train_data['source'])
 train_data['label'] = le.transform(train_data['source'])
 train_data = train_data.drop('source', axis = 1)
-
+# train_data['label'] = train_data['label'].apply(lambda x: x+1)
+# print(train_data['label'].unique())
 agg_train_data = aggregate_labels(train_data)
 
 onlyfiles = [f for f in listdir('./train_altered')]
@@ -145,5 +151,6 @@ img_folder_path = './train_altered/'
 my_dataset = CustomDataSet(img_folder_path, agg_train_data,transform=transform)
 print(len(list(my_dataset)))
 train_loader = data.DataLoader(my_dataset , batch_size=32, shuffle=False, num_workers=4, drop_last = True)
-model = SimpleNet(num_classes=int(len(train_data['label'].unique())))
-train_data(50, train_loader, model)
+
+model = SimpleNet(num_classes=8)
+train_model(50, train_loader, model)
