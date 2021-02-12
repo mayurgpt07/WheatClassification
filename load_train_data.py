@@ -21,7 +21,7 @@ class CustomDataSet(Dataset):
         self.transform = transform
         self.dataframe = dataFrame
         all_imgs = os.listdir(main_dir)
-        if ('.DS_Store' or './train_altered/.DS_Store' or './DS_Store') in all_imgs:
+        if ('.DS_Store' or './train_alter/.DS_Store' or './DS_Store') in all_imgs:
             all_imgs.remove('.DS_Store')
         self.total_imgs = natsorted(all_imgs)
 
@@ -144,10 +144,10 @@ train_data = train_data.drop('source', axis = 1)
 # print(train_data['label'].unique())
 agg_train_data = aggregate_labels(train_data)
 
-onlyfiles = [f for f in listdir('./train_altered')]
+onlyfiles = [f for f in listdir('./train_alter')]
 print(len(onlyfiles))
 
-img_folder_path = './train_altered/'
+img_folder_path = './train_alter/'
 my_dataset = CustomDataSet(img_folder_path, agg_train_data,transform=transform)
 print(len(list(my_dataset)))
 train_loader = data.DataLoader(my_dataset , batch_size=32, shuffle=False, num_workers=4, drop_last = True)
