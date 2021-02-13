@@ -15,6 +15,9 @@ from shutil import copyfile
 import time
 import os
 
+PRIMARY_DIRECTORY = './train/'
+ALTERED_DIRECTORY = './train_altered/'
+
 class CustomDataSet(Dataset):
     def __init__(self, main_dir, dataFrame, transform = None):
         self.main_dir = main_dir
@@ -144,10 +147,10 @@ train_data = train_data.drop('source', axis = 1)
 # print(train_data['label'].unique())
 agg_train_data = aggregate_labels(train_data)
 
-onlyfiles = [f for f in listdir('./train_alter')]
+onlyfiles = [f for f in listdir(ALTERED_DIRECTORY)]
 print(len(onlyfiles))
 
-img_folder_path = './train_alter/'
+img_folder_path = ALTERED_DIRECTORY
 my_dataset = CustomDataSet(img_folder_path, agg_train_data,transform=transform)
 print(len(list(my_dataset)))
 train_loader = data.DataLoader(my_dataset , batch_size=32, shuffle=False, num_workers=4, drop_last = True)

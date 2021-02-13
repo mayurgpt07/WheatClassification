@@ -14,6 +14,8 @@ from os.path import isfile, join
 from shutil import copyfile
 import time
 import os
+PRIMARY_DIRECTORY = './train/'
+ALTERED_DIRECTORY = './train_altered/'
 
 train_data = pd.read_csv('train.csv', sep = ',', header = 0)
 
@@ -24,7 +26,7 @@ train_data['label'] = le.transform(train_data['source'])
 train_data = train_data.drop('source', axis = 1)
 
 unique_images = list(train_data['image_id'].unique())
-onlyfiles = [f for f in listdir('./train')]
+onlyfiles = [f for f in listdir(PRIMARY_DIRECTORY)]
 onlyfiles = [f.split('.')[0] for f in onlyfiles]
 print(len(onlyfiles))
 image_id = train_data.loc[0,'image_id']
@@ -36,12 +38,12 @@ def create_image(train_data, image_id):
     # print(required_df)
 
     if len(required_df) == 0:
-        copyfile('./train/'+image_id+'.jpg', './train_altered/'+image_id+'.jpg')
+        copyfile(PRIMARY_DIRECTORY+image_id+'.jpg', ALTERED_DIRECTORY+image_id+'.jpg')
     
     else:
 
         f, ax = plt.subplots()
-        image = Image.open('./train/'+image_id+'.jpg')
+        image = Image.open(PRIMARY_DIRECTORY+image_id+'.jpg')
 
         ax.imshow(image)
         ax.axis('off')
@@ -51,7 +53,7 @@ def create_image(train_data, image_id):
             x, y, w, h = float(dimensions[0]),float(dimensions[1]),float(dimensions[2]),float(dimensions[3])
             rect = mpl.patches.Rectangle((x,y), w, h, linewidth = 1, edgecolor='r', facecolor = 'none')
             ax.add_patch(rect)
-        plt.savefig('./train_altered/'+image_id+'.jpg', bbox_inches='tight')
+        plt.savefig(ALTERED_DIRECTORY+image_id+'.jpg', bbox_inches='tight')
         del(f)
         del(ax)
         del(dimensions)
@@ -61,13 +63,13 @@ def create_image(train_data, image_id):
             time.sleep(1)
 
 
-# for image_id in unique_images:
-#     create_image(train_data, image_id)
+for image_id in unique_images:
+    create_image(train_data, image_id)
 
-onlyfiles_altered = [f for f in listdir('./train_altered')]
+onlyfiles_altered = [f for f in listdir(ALTERED_DIRECTORY)]
 onlyfiles_altered = [f.split('.')[0] for f in onlyfiles_altered]
 
 for i in onlyfiles:
     if i not in onlyfiles_altered:
-        copyfile('./train/'+i+'.jpg', './train_altered/'+i+'.jpg')
+        copyfile(PRIMARY_DIRECTORY+i+'.jpg', ALTERED_DIRECTORY+i+'.jpg')
 
