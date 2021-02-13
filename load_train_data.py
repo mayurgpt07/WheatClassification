@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 from PIL import Image
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, random_split
 from torch.utils import data
 from torchvision import transforms
 from natsort import natsorted
@@ -16,13 +16,15 @@ import time
 import os
 
 PRIMARY_DIRECTORY = './train/'
-ALTERED_DIRECTORY = './train_altered/'
+ALTERED_DIRECTORY = './train_alter/'
+
 
 class CustomDataSet(Dataset):
-    def __init__(self, main_dir, dataFrame, transform = None):
+    def __init__(self, main_dir, dataFrame, read_mode = 'train', transform = None):
         self.main_dir = main_dir
         self.transform = transform
         self.dataframe = dataFrame
+        self.read_mode = read_mode
         all_imgs = os.listdir(main_dir)
         if ('.DS_Store' or './train_alter/.DS_Store' or './DS_Store') in all_imgs:
             all_imgs.remove('.DS_Store')
@@ -33,16 +35,18 @@ class CustomDataSet(Dataset):
 
     def __getitem__(self, idx):
         img_loc = os.path.join(self.main_dir, self.total_imgs[idx])
-        image_id = str(self.total_imgs[idx]).split('.')[0]
-        if len(self.dataframe.loc[self.dataframe['image_id'] == image_id, 'label']) == 0:
-            label = 7
-        else:
-            label = self.dataframe.loc[self.dataframe['image_id'] == image_id, 'label']
-            label = list(label)[0]
-
         image = Image.open(img_loc)
         tensor_image = self.transform(image)
-        return tensor_image, label
+        if self.read_mode == 'train':
+            image_id = str(self.total_imgs[idx]).split('.')[0]
+            if len(self.dataframe.loc[self.dataframe['image_id'] == image_id, 'label']) == 0:
+                label = 7
+            else:
+                label = self.dataframe.loc[self.dataframe['image_id'] == image_id, 'label']
+                label = list(label)[0]
+            return tensor_image, label
+        elif self.read_mode == 'test':
+            return tensor_image
 
 
 class Unit(torch.nn.Module):
@@ -125,6 +129,18 @@ def train_model(epochs, train_loader, model):
             train_acc += torch.sum(prediction == label.data)
         print("Epoch {}, Train Accuracy: {} , TrainLoss: {}".format(epoch, train_acc, train_loss))
 
+def test_model(test_loader, model):
+    model.eval()
+    test_acc = 0
+    for i, (image, label) in test_loader:
+        outputs = model(image)
+        _, prediction = torch.max(outputs.data, 1)
+        test_acc += torch.sum(prediction == label.data)
+
+    print(test_acc)
+
+
+
 def aggregate_labels(df):
     aggregate_df = df.groupby(by=['image_id'])['label'].apply(lambda x: x.value_counts().index[0]).reset_index()
     return aggregate_df
@@ -151,9 +167,12 @@ onlyfiles = [f for f in listdir(ALTERED_DIRECTORY)]
 print(len(onlyfiles))
 
 img_folder_path = ALTERED_DIRECTORY
-my_dataset = CustomDataSet(img_folder_path, agg_train_data,transform=transform)
-print(len(list(my_dataset)))
-train_loader = data.DataLoader(my_dataset , batch_size=32, shuffle=False, num_workers=4, drop_last = True)
+my_dataset = CustomDataSet(img_folder_path, agg_train_data, 'train',transform=transform)
 
+train_dataset, test_dataset = random_split(my_dataset, [160, 32])
+print(len(list(my_dataset)))
+train_loader = data.DataLoader(train_dataset , batch_size=32, shuffle=False, num_workers=4, drop_last = True)
+test_loader = data.DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=4, drop_last = True)
 model = SimpleNet(num_classes=8)
-train_model(50, train_loader, model)
+train_model(10, train_loader, model)
+test_model(test_loader, model)
