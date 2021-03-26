@@ -16,7 +16,7 @@ import time
 import os
 
 PRIMARY_DIRECTORY = './train/'
-ALTERED_DIRECTORY = './train_altered/'
+ALTERED_DIRECTORY = './train_alter/'
 
 
 class CustomDataSet(Dataset):
@@ -26,7 +26,7 @@ class CustomDataSet(Dataset):
         self.dataframe = dataFrame
         self.read_mode = read_mode
         all_imgs = os.listdir(main_dir)
-        if ('.DS_Store' or './train_altered/.DS_Store' or './DS_Store') in all_imgs:
+        if ('.DS_Store' or './train_alter/.DS_Store' or './DS_Store') in all_imgs:
             all_imgs.remove('.DS_Store')
         self.total_imgs = natsorted(all_imgs)
 
@@ -139,48 +139,40 @@ def test_model(test_loader, model):
 
     print(test_acc)
 
+
+
 def aggregate_labels(df):
     aggregate_df = df.groupby(by=['image_id'])['label'].apply(lambda x: x.value_counts().index[0]).reset_index()
     return aggregate_df
 
-def return_transform():
-    transform = transforms.Compose([
-        transforms.Resize((256, 256)),
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+transform = transforms.Compose([
+    transforms.Resize((256, 256)),
+    transforms.ToTensor(),
+    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
-    return transform
-
-def preprocessing(train_data):
-    le = preprocessing.LabelEncoder()
-    le.fit(train_data['source'])
-    train_data['label'] = le.transform(train_data['source'])
-    train_data = train_data.drop('source', axis = 1)
-    agg_train_data = aggregate_labels(train_data)
-    return agg_train_data
 
 
+train_data = pd.read_csv('train.csv', sep = ',', header = 0)
 
-if __name__ == '__main__':
 
-    transform = return_transform()
-    print('Read happens')
-    train_data = pd.read_csv('train.csv', sep = ',', header = 0)
+le = preprocessing.LabelEncoder()
+le.fit(train_data['source'])
+train_data['label'] = le.transform(train_data['source'])
+train_data = train_data.drop('source', axis = 1)
+# train_data['label'] = train_data['label'].apply(lambda x: x+1)
+# print(train_data['label'].unique())
+agg_train_data = aggregate_labels(train_data)
 
-    agg_train_data = preprocessing(train_data)
+onlyfiles = [f for f in listdir(ALTERED_DIRECTORY)]
+print(len(onlyfiles))
 
-    onlyfiles = [f for f in listdir(ALTERED_DIRECTORY)]
-    print(len(onlyfiles))
+img_folder_path = ALTERED_DIRECTORY
+my_dataset = CustomDataSet(img_folder_path, agg_train_data, 'train',transform=transform)
 
-    img_folder_path = ALTERED_DIRECTORY
-    my_dataset = CustomDataSet(img_folder_path, agg_train_data, 'train',transform=transform)
-
-    train_dataset, test_dataset = random_split(my_dataset, [3390, 32])
-    print('Train Loader', len(list(train_dataset)))
-    print('Test Loader', len(list(test_dataset)))
-    train_loader = data.DataLoader(train_dataset , batch_size=32, shuffle=False, num_workers=4, drop_last = True)
-    test_loader = data.DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=4, drop_last = True)
-
-    model = SimpleNet(num_classes=8)
-    train_model(10, train_loader, model)
-    test_model(test_loader, model)
+train_dataset, test_dataset = random_split(my_dataset, [160, 32])
+print(len(list(my_dataset)))
+train_loader = data.DataLoader(train_dataset , batch_size=32, shuffle=False, num_workers=4, drop_last = True)
+test_loader = data.DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=4, drop_last = True)
+model = SimpleNet(num_classes=8)
+train_model(10, train_loader, model)
+test_model(test_loader, model)
