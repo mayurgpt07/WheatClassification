@@ -108,7 +108,7 @@ class SimpleNet(torch.nn.Module):
         output = self.fc(output)
         return output
 
-def train_model(epochs, train_loader, model):
+def train_model(epochs, train_loader, model, device):
     # print(model)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.0001)
     loss_fn = torch.nn.CrossEntropyLoss()
@@ -118,7 +118,8 @@ def train_model(epochs, train_loader, model):
         train_acc = 0
         for i, (image, label) in enumerate(train_loader):
             # print(label)
-            
+            image = image.to(device)
+            label = label.to(device)
             optimizer.zero_grad()
             outputs = model(image)
             loss = loss_fn(outputs, label)
@@ -129,10 +130,12 @@ def train_model(epochs, train_loader, model):
             train_acc += torch.sum(prediction == label.data)
         print("Epoch {}, Train Accuracy: {} , TrainLoss: {}".format(epoch, train_acc, train_loss))
 
-def test_model(test_loader, model):
+def test_model(test_loader, model, device):
     model.eval()
     test_acc = 0
-    for i, (image, label) in test_loader:
+    for i, (image, label) in enumerate(test_loader):
+        image = image.to(device)
+        label = label.to(device)
         outputs = model(image)
         _, prediction = torch.max(outputs.data, 1)
         test_acc += torch.sum(prediction == label.data)
@@ -151,7 +154,7 @@ def return_transform():
     ])
     return transform
 
-def preprocessing(train_data):
+def preprocessing_data(train_data):
     le = preprocessing.LabelEncoder()
     le.fit(train_data['source'])
     train_data['label'] = le.transform(train_data['source'])
@@ -164,10 +167,11 @@ def preprocessing(train_data):
 if __name__ == '__main__':
 
     transform = return_transform()
-    print('Read happens')
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    print('Running Device is: ',device)
     train_data = pd.read_csv('train.csv', sep = ',', header = 0)
 
-    agg_train_data = preprocessing(train_data)
+    agg_train_data = preprocessing_data(train_data)
 
     onlyfiles = [f for f in listdir(ALTERED_DIRECTORY)]
     print(len(onlyfiles))
@@ -182,5 +186,7 @@ if __name__ == '__main__':
     test_loader = data.DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=4, drop_last = True)
 
     model = SimpleNet(num_classes=8)
-    train_model(10, train_loader, model)
-    test_model(test_loader, model)
+
+    model = model.to(device)
+    train_model(20, train_loader, model,device)
+    test_model(test_loader, model, device)
